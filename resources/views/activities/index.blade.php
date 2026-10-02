@@ -21,8 +21,8 @@
             @foreach ($activities as $activity)
             <tr>
                 <td>{{ $activity->title }}</td>
-                <td>{{ $activity->category }}</td>
-                <td>{{ $activity->activity_date }}</td>
+                <td>{{ $activity->category?->name }}</td>
+                <td>{{ $activity->start_at }}</td>
                 <td>{{ $activity->status }}</td>
                 <td>
                     <!-- Tombol Detail dan Ubah -->

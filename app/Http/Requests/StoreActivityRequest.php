@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreActivityRequest extends FormRequest
 {
@@ -16,12 +15,13 @@ class StoreActivityRequest extends FormRequest
     {
         return [
             'category_id' => ['required', 'exists:categories,id'],
-            'code'        => ['required', 'string', 'unique:activities,code'],
-            'title'       => ['required', 'string', 'max:255'],
+            'code'        => ['required', 'string', 'max:30', 'unique:activities,code'],
+            'title'       => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string'],
-            'status'      => ['required', 'in:Draft,Published,Completed,Cancelled'],
             'start_at'    => ['required', 'date'],
-            'capacity'    => ['required', 'integer', 'min:1'],
+            'end_at'      => ['required', 'date', 'after_or_equal:start_at'],
+            'location'    => ['required', 'string', 'max:255'],
+            'capacity'    => ['required', 'integer', 'min:1', 'max:500'],
         ];
     }
 }

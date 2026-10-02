@@ -37,25 +37,19 @@ class ActivityController extends Controller
     }
 
     // Menggunakan ActivityService agar semua kolom wajib (activity_date, status, dll) terisi otomatis
-    public function store(Request $request)
-{
-    // 1. Validasi
-    $request->validate([
-        'title'       => 'required',
-        'description' => 'nullable',
-    ]);
+    public function store(StoreActivityRequest $request)
+    {
+        $data = $request->validated();
 
-    // 2. Simpan kolom yang benar-benar ada di database
-    Activity::create([
-        'title'         => $request->title,
-        'description'   => $request->description,
-        'activity_date' => now(),
-        'category_id'   => $request->category_id ?? 1, // Kolom dari migration terbaru
-        'status'        => 'Planned',
-    ]);
+        Activity::create([
+            ...$data,
+            'activity_date' => $data['start_at'], // sementara, kolom lama masih NOT NULL
+            'status'        => 'draft',
+        ]);
 
-    return redirect()->route('activities.create')->with('success', 'Data berhasil disimpan!');
-}
+        return redirect()->route('activities.index')
+                        ->with('success', 'Kegiatan berhasil disimpan sebagai draft.');
+    }
 
     public function show(Activity $activity)
     {
