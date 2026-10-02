@@ -50,7 +50,6 @@ class ActivityController extends Controller
         'title'         => $request->title,
         'description'   => $request->description,
         'activity_date' => now(),
-        'category'      => 'Umum', // Kolom category bawaan dari create_activities
         'category_id'   => $request->category_id ?? 1, // Kolom dari migration terbaru
         'status'        => 'Planned',
     ]);

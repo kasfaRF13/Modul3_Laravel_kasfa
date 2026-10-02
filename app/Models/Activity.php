@@ -19,7 +19,8 @@ class Activity extends Model
         'start_at',
         'capacity',
         'activity_date',  // kolom lama, sementara
-        'category', 
+        'end_at',
+        'location'
     ];
 
     public function category()
