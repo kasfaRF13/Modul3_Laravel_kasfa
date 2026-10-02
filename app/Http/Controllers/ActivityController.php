@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Models\Registration;
 use App\Models\Category;
 use App\Models\Activity;
 use App\Http\Requests\StoreActivityRequest;
@@ -51,8 +54,13 @@ use DomainException;
 
 public function store(Request $request)
 {
-    // Simpan data (bisa tanpa validasi ketat/opsional agar bisa buat draft tidak lengkap)
-    Activity::create([
+    // 1. Validasi opsional untuk poster (mimes & max size 2MB)
+    $request->validate([
+        'poster' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    // 2. Ambil semua input
+    $data = [
         'category_id' => $request->category_id,
         'code'        => $request->code,
         'title'       => $request->title,
@@ -61,10 +69,19 @@ public function store(Request $request)
         'end_at'      => $request->end_at,
         'location'    => $request->location,
         'capacity'    => $request->quota ?? $request->capacity,
-        'status'      => 'draft', // default buat sebagai draft
-    ]);
+        'status'      => 'draft',
+    ];
 
-    return redirect()->route('activities.index')->with('success', 'Kegiatan draft berhasil dibuat!');
+    // 3. Cek apakah ada file poster yang diunggah
+    if ($request->hasFile('poster')) {
+        // Simpan file ke storage/app/public/posters
+        $data['poster'] = $request->file('poster')->store('posters', 'public');
+    }
+
+    // 4. Simpan ke database
+    Activity::create($data);
+
+    return redirect()->route('activities.index')->with('success', 'Aktivitas berhasil dibuat!');
 }
 
     public function show(Activity $activity)
@@ -82,12 +99,25 @@ public function store(Request $request)
         return view('activities.edit', compact('activity', 'categories'));
     }
 
-    // Tanggung jawab diserahkan ke ActivityService, dan menangkap penolakan
     public function update(UpdateActivityRequest $request, Activity $activity)
 {
-    // Menggunakan update biasa langsung ke Model untuk update data
-    $activity->update($request->validated());
-    
+    // Ambil data yang sudah lolos validasi dari FormRequest
+    $data = $request->validated();
+
+    // Cek apakah ada file poster baru yang diunggah
+    if ($request->hasFile('poster')) {
+        // 1. Hapus poster lama dari storage jika filenya ada
+        if ($activity->poster && Storage::disk('public')->exists($activity->poster)) {
+            Storage::disk('public')->delete($activity->poster);
+        }
+
+        // 2. Simpan poster baru ke folder posters
+        $data['poster'] = $request->file('poster')->store('posters', 'public');
+    }
+
+    // Update data kegiatan di database
+    $activity->update($data);
+
     return redirect()->route('activities.show', $activity)
                      ->with('success', 'Kegiatan berhasil diperbarui.');
 }
@@ -134,4 +164,48 @@ public function store(Request $request)
 
         return redirect()->route('activities.index')->with('success', 'Aktivitas berhasil dipulihkan!');
     }
+
+    public function storeRegistration(Request $request, $activityId)
+{
+    $request->validate([
+        'email' => 'required|email',
+    ]);
+
+    return DB::transaction(function () use ($request, $activityId) {
+        // Lock for update untuk mencegah race condition saat mengecek kapasitas
+        $activity = Activity::lockForUpdate()->findOrFail($activityId);
+
+        // 1. Aturan: Pendaftaran hanya untuk activity published
+        if ($activity->status !== 'published') {
+            return back()->with('error', 'Pendaftaran gagal: Aktivitas belum dipublikasikan.');
+        }
+
+        // 2. Aturan: Pendaftaran ditolak jika start_at sudah lewat
+        if (now()->greaterThan($activity->start_at)) {
+            return back()->with('error', 'Pendaftaran gagal: Waktu pelaksanaan aktivitas sudah lewat.');
+        }
+
+        // 3. Aturan: Jumlah pendaftar tidak boleh melebihi capacity
+        if ($activity->registrations()->count() >= $activity->capacity) {
+            return back()->with('error', 'Pendaftaran gagal: Kapasitas peserta sudah penuh.');
+        }
+
+        // 4. Aturan: Email tidak boleh mendaftar dua kali
+        $exists = Registration::where('activity_id', $activityId)
+            ->where('user_email', $request->email)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'Pendaftaran gagal: Email ini sudah terdaftar pada aktivitas ini.');
+        }
+
+        // Eksekusi Pendaftaran (Berada dalam 1 Transaction)
+        Registration::create([
+            'activity_id' => $activityId,
+            'user_email' => $request->email,
+        ]);
+
+        return back()->with('success', 'Pendaftaran peserta berhasil!');
+    });
+}
 }

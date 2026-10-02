@@ -14,3 +14,4 @@ Route::resource('categories', CategoryController::class);
 Route::patch('/activities/{activity}/publish', [ActivityController::class, 'publish'])->name('activities.publish');
 Route::patch('/activities/{activity}/complete', [ActivityController::class, 'complete'])->name('activities.complete');
 Route::patch('/activities/{id}/restore', [ActivityController::class, 'restore'])->name('activities.restore');
+Route::post('/activities/{id}/register', [ActivityController::class, 'storeRegistration'])->name('activities.register');

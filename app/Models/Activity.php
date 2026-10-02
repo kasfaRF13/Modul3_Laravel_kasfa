@@ -22,9 +22,10 @@ class Activity extends Model
         'status',
         'start_at',
         'capacity',
-        'activity_date',  // kolom lama, sementara
+        'activity_date',
         'end_at',
-        'location'
+        'location',
+        'poster' 
     ];
 
     protected $casts = [
@@ -35,4 +36,9 @@ class Activity extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function registrations()
+{
+    return $this->hasMany(Registration::class);
+}
 }
