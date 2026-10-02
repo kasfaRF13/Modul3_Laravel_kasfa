@@ -23,6 +23,10 @@ class Activity extends Model
         'location'
     ];
 
+    protected $casts = [
+        'activity_date' => 'datetime',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);
