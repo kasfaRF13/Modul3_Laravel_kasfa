@@ -9,6 +9,7 @@ class Activity extends Model
 {
     use HasFactory;
 
+
     protected $fillable = [
         'category_id', 
         'code',
@@ -17,6 +18,8 @@ class Activity extends Model
         'status',
         'start_at',
         'capacity',
+        'activity_date',  // kolom lama, sementara
+        'category', 
     ];
 
     public function category()

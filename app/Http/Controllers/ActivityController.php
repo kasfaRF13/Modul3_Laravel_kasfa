@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Activity;
 use App\Http\Requests\StoreActivityRequest;
 use App\Http\Requests\UpdateActivityRequest;
@@ -19,40 +20,58 @@ class ActivityController extends Controller
         // Daftar status yang diizinkan untuk difilter
         $validStatuses = ['Planned', 'Ongoing', 'Done'];
 
-        // Ambil data kegiatan. Jika statusnya valid, jalankan filternya.
-        $activities = Activity::when(in_array($status, $validStatuses), function ($query) use ($status) {
-            return $query->where('status', $status);
-        })->get();
+        // Gunakan with('category') untuk Eager Loading agar query efisien
+        $activities = Activity::with('category')
+            ->when(in_array($status, $validStatuses), function ($query) use ($status) {
+                return $query->where('status', $status);
+            })
+            ->get();
 
         return view('activities.index', compact('activities'));
     }
 
     public function create()
     {
-        return view('activities.create');
+        $categories = Category::all();
+        return view('activities.create', compact('categories'));
     }
 
+    // Menggunakan ActivityService agar semua kolom wajib (activity_date, status, dll) terisi otomatis
+    public function store(Request $request)
+{
+    // 1. Validasi
+    $request->validate([
+        'title'       => 'required',
+        'description' => 'nullable',
+    ]);
 
-    // Tanggung jawab diserahkan ke ActivityService
-    public function store(StoreActivityRequest $request, ActivityService $service)
-    {
-        $activity = $service->create($request->validated());
-        
-        return redirect()->route('activities.show', $activity)
-                         ->with('success', 'Kegiatan berhasil ditambahkan.');
-    }
+    // 2. Simpan kolom yang benar-benar ada di database
+    Activity::create([
+        'title'         => $request->title,
+        'description'   => $request->description,
+        'activity_date' => now(),
+        'category'      => 'Umum', // Kolom category bawaan dari create_activities
+        'category_id'   => $request->category_id ?? 1, // Kolom dari migration terbaru
+        'status'        => 'Planned',
+    ]);
+
+    return redirect()->route('activities.create')->with('success', 'Data berhasil disimpan!');
+}
 
     public function show(Activity $activity)
     {
+        // Muat relasi kategori agar bisa ditampilkan di halaman detail
+        $activity->load('category');
         return view('activities.show', compact('activity'));
     }
 
     public function edit(Activity $activity)
     {
-        return view('activities.edit', compact('activity'));
+        $categories = Category::all();
+        return view('activities.edit', compact('categories', 'activity'));
     }
 
-   // Tanggung jawab diserahkan ke ActivityService, dan menangkap penolakan
+    // Tanggung jawab diserahkan ke ActivityService, dan menangkap penolakan
     public function update(UpdateActivityRequest $request, Activity $activity, ActivityService $service)
     {
         try {

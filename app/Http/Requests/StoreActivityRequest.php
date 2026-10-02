@@ -15,14 +15,13 @@ class StoreActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'         => ['required', 'string', 'min:5', 'max:100'],
-            'description'   => ['nullable', 'string', 'max:1000'],
-            'activity_date' => ['required', 'date'],
-            'category'      => ['required', 'string', 'max:50'],
-            'status'        => [
-                'required',
-                Rule::in(['Planned', 'Ongoing', 'Done']),
-            ],
+            'category_id' => ['required', 'exists:categories,id'],
+            'code'        => ['required', 'string', 'unique:activities,code'],
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'status'      => ['required', 'in:Draft,Published,Completed,Cancelled'],
+            'start_at'    => ['required', 'date'],
+            'capacity'    => ['required', 'integer', 'min:1'],
         ];
     }
 }
