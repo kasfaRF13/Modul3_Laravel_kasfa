@@ -126,4 +126,12 @@ public function store(Request $request)
         $activity->update(['status' => 'completed']);
         return back()->with('success', 'Kegiatan telah selesai (completed)!');
     }
+
+    public function restore($id)
+    {
+        $activity = Activity::withTrashed()->findOrFail($id);
+        $activity->restore();
+
+        return redirect()->route('activities.index')->with('success', 'Aktivitas berhasil dipulihkan!');
+    }
 }
